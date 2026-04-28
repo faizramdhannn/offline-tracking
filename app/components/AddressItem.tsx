@@ -2,10 +2,10 @@ export default function AddressItem({ label, value, icon }: any) {
   return (
     <div className="flex gap-3 w-content">
       <div className="shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
           {icon === "user" ? (
             <svg
-              className="w-5 h-5 text-gray-600"
+              className="w-4 h-4 text-gray-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -19,7 +19,7 @@ export default function AddressItem({ label, value, icon }: any) {
             </svg>
           ) : (
             <svg
-              className="w-5 h-5 text-gray-600"
+              className="w-4 h-4 text-gray-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -42,8 +42,8 @@ export default function AddressItem({ label, value, icon }: any) {
       </div>
 
       <div>
-        <p className="text-sm md:text-base text-gray-500 mb-1">{label}</p>
-        <p className="text-base md:text-lg font-semibold text-gray-800 uppercase">
+        <p className="text-xs md:text-sm text-gray-500 mb-0.5">{label}</p>
+        <p className="text-sm md:base font-semibold text-gray-800 uppercase">
           {value}
         </p>
       </div>

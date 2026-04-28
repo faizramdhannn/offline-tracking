@@ -2,7 +2,7 @@ import AddressItem from "./AddressItem";
 
 export default function AddressBlock({ trackingData }: any) {
   return (
-    <div className="flex max-md:flex-col md:gap-12 gap-5 justify-center">
+    <div className="flex max-md:flex-col md:gap-8 gap-3 justify-center">
       {/* Sender */}
       <AddressItem
         label="Alamat pengirim"

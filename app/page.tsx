@@ -164,7 +164,7 @@ export default function Home({ onNewTracking }: HomeProps = {}) {
          * ====================================== */}
         <div className="w-full md:w-[80%]">
           {trackingData && (
-            <div className="flex flex-col gap-10 justify-center bg-white min-h-screen shadow-lg p-6 md:p-8">
+            <div className="flex flex-col gap-6 justify-center bg-white min-h-screen shadow-lg p-4 md:p-6">
               <div className="flex justify-center">
                 <img
                   src={
@@ -173,7 +173,7 @@ export default function Home({ onNewTracking }: HomeProps = {}) {
                       : "/Logo Sicepat.png"
                   }
                   alt="Courier Logo"
-                  className="h-24 md:h-32 object-contain"
+                  className="h-14 md:h-20 object-contain"
                 />
               </div>
 
