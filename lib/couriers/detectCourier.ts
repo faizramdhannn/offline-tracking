@@ -1,17 +1,10 @@
 export const detectCourier = (
   sttNumber: string
 ): "lion" | "sicepat" | "unknown" => {
-  const upper = sttNumber.toUpperCase();
+  const upper = sttNumber.trim().toUpperCase();
 
-  const isLion =
-    upper.startsWith("99LP") ||
-    upper.startsWith("19LP") ||
-    upper.startsWith("88LP");
-
-  const isSicepat = upper.startsWith("00");
-
-  if (isLion) return "lion";
-  if (isSicepat) return "sicepat";
+  if (/^(99LP|19LP|88LP)/.test(upper)) return "lion";
+  if (/^(00|99)/.test(upper)) return "sicepat";
 
   return "unknown";
 };
