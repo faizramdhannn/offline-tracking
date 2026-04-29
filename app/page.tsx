@@ -26,6 +26,7 @@ export default function Home({ onNewTracking }: HomeProps = {}) {
   const { trackingData, groupedHistory, sortedDates, progressSteps } =
     useTrackingData(result, stt);
 
+  // ── Auto-track dari localStorage (dipanggil via dynamic route) ─────────
   useEffect(() => {
     const auto = localStorage.getItem("AUTO_STT");
     if (auto) {
@@ -33,6 +34,28 @@ export default function Home({ onNewTracking }: HomeProps = {}) {
       handleTrack(auto);
       localStorage.removeItem("AUTO_STT");
     }
+  }, [handleTrack]);
+
+  // ── Listener postMessage dari parent app (iframe) ──────────────────────
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      // Terima dari semua origin karena parent app bisa beda-beda domain,
+      // tapi validasi type message-nya
+      if (event.data?.type !== "CHECK_RESI") return;
+
+      const incomingResi = String(event.data.resi || "").trim();
+      if (!incomingResi) return;
+
+      // Isi input & langsung lacak
+      setStt(incomingResi);
+      handleTrack(incomingResi);
+
+      // Tutup drawer mobile jika terbuka
+      setIsDrawerOpen(false);
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
   }, [handleTrack]);
 
   const handleTrackWithRedirect = useCallback(async (sttNumber: string) => {
