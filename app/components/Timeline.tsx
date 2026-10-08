@@ -3,30 +3,78 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
-import { ChevronDown } from "lucide-react";
+import {
+  Bike,
+  ChevronDown,
+  MapPin,
+  Package,
+  PackageCheck,
+  PackagePlus,
+  Truck,
+  Warehouse,
+  type LucideProps,
+} from "lucide-react";
 import type { HistoryItem } from "@/types/history";
 import { formatTime, toTitleCase } from "@/utils/tracking/format";
+import Lightbox from "./Lightbox";
 import { CARD, EASE, rise } from "./motion";
 
+// Kode status Lion Parcel dan SiCepat
+function EventIcon({
+  statusCode,
+  ...props
+}: { statusCode: string } & LucideProps) {
+  switch (statusCode) {
+    case "POD":
+    case "DELIVERED":
+      return <PackageCheck {...props} />;
+    case "DEL":
+    case "HND":
+    case "ANT":
+      return <Bike {...props} />;
+    case "TRANSIT":
+    case "INHUB":
+    case "OUTHUB":
+    case "OUT":
+      return <Truck {...props} />;
+    case "STI":
+    case "IN":
+      return <Warehouse {...props} />;
+    case "PICKREQ":
+      return <PackagePlus {...props} />;
+    default:
+      return <Package {...props} />;
+  }
+}
+
 function ProofOfDelivery({ item }: { item: HistoryItem }) {
+  const [zoomed, setZoomed] = useState<string | null>(null);
+  const attachments = item.attachment ?? [];
+
   return (
     <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
-      {item.receivedBy && (
+      {item.receivedBy ? (
         <p className="text-xs text-muted sm:text-sm">
           Diterima oleh{" "}
           <span className="font-display text-fg">{item.receivedBy}</span>
         </p>
-      )}
+      ) : null}
 
-      {item.attachment?.length > 0 && (
+      {attachments.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2 first:mt-0">
-          {item.attachment.map((url: string, i: number) => (
+          {attachments.map((url, i) => (
             <a
               key={i}
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="overflow-hidden rounded-lg border border-line"
+              onClick={(e) => {
+                // Ctrl/Cmd+klik tetap membuka tab baru
+                if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+                e.preventDefault();
+                setZoomed(url);
+              }}
+              className="cursor-zoom-in overflow-hidden rounded-lg border border-line"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -38,7 +86,13 @@ function ProofOfDelivery({ item }: { item: HistoryItem }) {
             </a>
           ))}
         </div>
-      )}
+      ) : null}
+
+      <Lightbox
+        src={zoomed}
+        alt="Bukti pengiriman"
+        onClose={() => setZoomed(null)}
+      />
     </div>
   );
 }
@@ -53,7 +107,13 @@ function TimelineItem({
   isLast: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const hasPOD = Boolean(item.receivedBy) || item.attachment?.length > 0;
+  const hasPOD = Boolean(item.receivedBy) || Boolean(item.attachment?.length);
+
+  // SiCepat mengisi lokasi dan deskripsi dengan teks yang sama
+  const location = (item.location ?? "").replace(/^[\s-]+|[\s-]+$/g, "");
+  const showLocation =
+    location !== "" &&
+    location.toLowerCase() !== (item.description ?? "").toLowerCase();
 
   return (
     <m.li
@@ -63,24 +123,30 @@ function TimelineItem({
       transition={{ duration: 0.45, ease: EASE }}
       className="relative flex gap-3 pb-5 last:pb-0"
     >
-      {!isLast && (
-        <span className="absolute bottom-0 left-[7px] top-5 w-px bg-line" />
-      )}
+      {!isLast ? (
+        <span className="absolute bottom-0 left-[13.5px] top-8 w-px bg-line" />
+      ) : null}
 
-      <span className="relative mt-[3px] grid size-[15px] shrink-0 place-items-center">
-        {isLatest && (
+      <span className="relative grid size-7 shrink-0 place-items-center">
+        {isLatest ? (
           <span className="absolute inset-0 animate-ring rounded-full bg-accent" />
-        )}
+        ) : null}
         <span
-          className={`relative rounded-full ${
+          className={`relative grid size-7 place-items-center rounded-full ${
             isLatest
-              ? "size-[11px] bg-accent ring-4 ring-accent-soft"
-              : "size-[9px] border-2 border-subtle bg-surface"
+              ? "bg-accent text-accent-fg"
+              : "bg-surface-2 text-subtle"
           }`}
-        />
+        >
+          <EventIcon
+            statusCode={item.statusCode}
+            className="size-3.5"
+            strokeWidth={isLatest ? 2.2 : 1.8}
+          />
+        </span>
       </span>
 
-      <div className="min-w-0 flex-1 sm:flex sm:gap-4">
+      <div className="min-w-0 flex-1 pt-1 sm:flex sm:gap-4">
         <time
           dateTime={item.dateTime}
           className="block shrink-0 font-mono text-xs text-subtle sm:w-[88px] sm:pt-0.5"
@@ -97,7 +163,14 @@ function TimelineItem({
             {toTitleCase(item.description)}
           </p>
 
-          {hasPOD && (
+          {showLocation ? (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-subtle">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{toTitleCase(location)}</span>
+            </p>
+          ) : null}
+
+          {hasPOD ? (
             <>
               <button
                 type="button"
@@ -114,7 +187,7 @@ function TimelineItem({
               </button>
 
               <AnimatePresence initial={false}>
-                {open && (
+                {open ? (
                   <m.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -124,10 +197,10 @@ function TimelineItem({
                   >
                     <ProofOfDelivery item={item} />
                   </m.div>
-                )}
+                ) : null}
               </AnimatePresence>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </m.li>

@@ -1,4 +1,12 @@
-export function normalizeTrackingResponse(raw: any) {
+interface RawTrackingResponse {
+  courier?: string;
+  status_code?: string;
+  stt_journey_type?: string;
+  is_return?: boolean;
+  data?: RawTrackingResponse;
+}
+
+export function normalizeTrackingResponse(raw: RawTrackingResponse) {
   return {
     courier: raw.courier,
     status_code: raw.status_code ?? raw.data?.status_code,

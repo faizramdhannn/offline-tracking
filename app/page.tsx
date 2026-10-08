@@ -15,6 +15,8 @@ import EmptyState from "./components/EmptyState";
 import ErrorState from "./components/ErrorState";
 import ResultSkeleton from "./components/ResultSkeleton";
 import TrackingResult from "./components/TrackingResult";
+import RecentResi from "./components/RecentResi";
+import { useRecentResi } from "./hooks/useRecentResi";
 import { normalizeResi, useTracking } from "./hooks/useTracking";
 
 // Harus sama dengan pola rewrite di next.config.ts
@@ -46,6 +48,11 @@ function Stage({ children }: { children: React.ReactNode }) {
 export default function Home() {
   const [input, setInput] = useState("");
   const { state, track, reset } = useTracking();
+  const { recent, remember, clear } = useRecentResi();
+
+  useEffect(() => {
+    if (state.status === "success") remember(state.resi);
+  }, [state, remember]);
 
   // ── Resi dari URL (/NOMOR_RESI), termasuk tombol back/forward ──────────
   useEffect(() => {
@@ -93,10 +100,29 @@ export default function Home() {
     return () => window.removeEventListener("message", handler);
   }, [submit]);
 
+  // Posisi kursor untuk sorotan kartu (utility `spotlight` di globals.css)
+  const trackPointer = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse") return;
+
+    const card = (e.target as Element).closest<HTMLElement>(".spotlight");
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+    card.style.setProperty("--my", `${e.clientY - rect.top}px`);
+  };
+
+  const showRecent =
+    recent.length > 0 &&
+    (state.status === "idle" || state.status === "error");
+
   return (
     <LazyMotion features={domAnimation} strict>
       <MotionConfig reducedMotion="user">
-        <main className="mx-auto w-full max-w-2xl px-4 pb-14 pt-5 sm:pt-8">
+        <main
+          onPointerMove={trackPointer}
+          className="mx-auto w-full max-w-2xl px-4 pb-14 pt-5 sm:pt-8"
+        >
           <header className="mb-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs text-muted">Torch Indonesia</p>
@@ -113,6 +139,10 @@ export default function Home() {
               onSubmit={submit}
             />
           </div>
+
+          {showRecent ? (
+            <RecentResi recent={recent} onPick={submit} onClear={clear} />
+          ) : null}
 
           <div className="mt-4">
             <AnimatePresence mode="wait" initial={false}>

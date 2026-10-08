@@ -18,5 +18,24 @@ export const formatTime = (dateString: string) => {
   return `${time} WIB`;
 };
 
+const relative = new Intl.RelativeTimeFormat("id", { numeric: "auto" });
+
+/** "2 jam yang lalu", "kemarin"; lebih dari sebulan kembali ke tanggal biasa. */
+export const formatRelative = (dateString: string, now: number) => {
+  const diff = new Date(dateString).getTime() - now;
+  if (Number.isNaN(diff)) return "";
+
+  const minutes = Math.round(diff / 60_000);
+  if (Math.abs(minutes) < 60) return relative.format(minutes, "minute");
+
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return relative.format(hours, "hour");
+
+  const days = Math.round(hours / 24);
+  if (Math.abs(days) < 30) return relative.format(days, "day");
+
+  return formatDate(dateString);
+};
+
 export const toTitleCase = (text?: string | null) =>
   (text ?? "").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());

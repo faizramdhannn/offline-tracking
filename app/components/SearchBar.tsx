@@ -42,7 +42,7 @@ export default function SearchBar({
         className="h-11 min-w-0 flex-1 bg-transparent px-2 font-mono text-base uppercase text-fg outline-none placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-subtle"
       />
 
-      {value && (
+      {value ? (
         <button
           type="button"
           onClick={() => onChange("")}
@@ -51,7 +51,7 @@ export default function SearchBar({
         >
           <X className="size-4" />
         </button>
-      )}
+      ) : null}
 
       <button
         type="submit"

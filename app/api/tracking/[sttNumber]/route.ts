@@ -35,8 +35,8 @@ export async function GET(
     if (courier === "sicepat") return await fetchSicepat(sttNumber);
 
     return jsonError("Courier handler not implemented.", 500);
-  } catch (error: any) {
-    if (error?.name === "TimeoutError") {
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
       return jsonError("Courier API timed out.", 504);
     }
 
@@ -44,6 +44,8 @@ export async function GET(
       return jsonError("Unable to reach the API server.", 503);
     }
 
-    return jsonError("Unexpected server error.", 500, error?.message);
+    return jsonError("Unexpected server error.", 500, 
+      error instanceof Error ? error.message : undefined
+    );
   }
 }

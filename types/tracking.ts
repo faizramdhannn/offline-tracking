@@ -1,3 +1,5 @@
+import type { HistoryItem } from "./history";
+
 export interface TrackingData {
   courier: string;
   waybillNumber: string;
@@ -8,7 +10,7 @@ export interface TrackingData {
   weight: number;
   service: string;
   currentStatus: string;
-  history: any[];
+  history: HistoryItem[];
   podReceiver?: string | null;
   podTime?: string | null;
   podImage?: string | null;

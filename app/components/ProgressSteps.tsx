@@ -21,6 +21,7 @@ export default function ProgressSteps({
 }) {
   const lastIndex = steps.length - 1;
   const fill = Math.max(currentStep, 0) / lastIndex;
+  const duration = 0.5 + fill * 0.9;
 
   return (
     <ol className="relative grid grid-cols-4">
@@ -33,9 +34,33 @@ export default function ProgressSteps({
           className="h-full origin-left rounded-full bg-accent"
           initial={{ scaleX: 0 }}
           animate={{ scaleX: fill }}
-          transition={{ duration: 0.5 + fill * 0.9, ease: EASE, delay: 0.25 }}
+          transition={{ duration, ease: EASE, delay: 0.25 }}
         />
       </li>
+
+      {/* Truk meluncur di ujung garis lalu menghilang di tahap sekarang */}
+      {fill > 0 ? (
+        <li
+          aria-hidden
+          className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-2 z-10 h-6"
+        >
+          <m.span
+            className="absolute top-0 grid size-6 -translate-x-1/2 place-items-center rounded-full bg-fg text-bg shadow-card"
+            initial={{ left: "0%", opacity: 0 }}
+            animate={{ left: `${fill * 100}%`, opacity: [0, 1, 1, 0] }}
+            transition={{
+              left: { duration, ease: EASE, delay: 0.25 },
+              opacity: {
+                duration: duration + 0.25,
+                times: [0, 0.12, 0.8, 1],
+                delay: 0.25,
+              },
+            }}
+          >
+            <Truck className="size-3.5" />
+          </m.span>
+        </li>
+      ) : null}
 
       {steps.map((step, index) => {
         const Icon = ICONS[step.key];
@@ -59,9 +84,9 @@ export default function ProgressSteps({
                 delay: 0.25 + index * 0.22,
               }}
             >
-              {isCurrent && index !== lastIndex && (
+              {isCurrent && index !== lastIndex ? (
                 <span className="absolute inset-0 animate-ring rounded-full bg-accent" />
-              )}
+              ) : null}
               <span
                 className={`relative grid size-10 place-items-center rounded-full border transition-colors ${
                   reached

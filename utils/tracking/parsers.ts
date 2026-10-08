@@ -1,7 +1,15 @@
 import { TrackingData } from "@/types/tracking";
+import type {
+  CourierApiResponse,
+  LionResponse,
+  SicepatResponse,
+} from "@/types/courierApi";
 import { cleanRemarks } from "./cleanRemarks";
 
-export const parseLionData = (data: any, stt: string): TrackingData | null => {
+export const parseLionData = (
+  data: LionResponse,
+  stt: string
+): TrackingData | null => {
   const t = data.stts?.[0];
   if (!t) return null;
 
@@ -15,11 +23,11 @@ export const parseLionData = (data: any, stt: string): TrackingData | null => {
     weight: t.chargeable_weight,
     service: t.product_type,
     currentStatus: t.current_status,
-    history: t.history.map((h: any) => ({
+    history: t.history.map((h) => ({
       dateTime: h.datetime,
       status: h.current_status,
       statusCode: h.status_code,
-     description: cleanRemarks(h.remarks),
+      description: cleanRemarks(h.remarks),
       location: `${h.location} - ${h.city}`,
       courierName: h.courier_name,
       receivedBy: h.received_by,
@@ -29,7 +37,7 @@ export const parseLionData = (data: any, stt: string): TrackingData | null => {
 };
 
 export const parseSicepatData = (
-  data: any,
+  data: SicepatResponse,
   stt: string
 ): TrackingData | null => {
   const t = data.sicepat?.result;
@@ -52,7 +60,7 @@ export const parseSicepatData = (
     podReceiver: t.POD_receiver || null,
     podTime: t.POD_receiver_time || null,
     podImage: t.pod_img_path || null,
-    history: (t.track_history || []).map((h: any, index: number) => ({
+    history: (t.track_history || []).map((h, index) => ({
       dateTime: h.date_time,
       status: h.status,
       statusCode: h.status,
@@ -65,17 +73,22 @@ export const parseSicepatData = (
           : h.city || "",
 
       location: h.city || "",
-      receivedBy: h.status === "DELIVERED" ? h.receiver_name : null,
+      receivedBy: h.status === "DELIVERED" ? h.receiver_name ?? null : null,
 
       attachment:
         h.status === "DELIVERED" && t.pod_img_path
-          ? [t.pod_img_path, t.pod_sign_img_path].filter(Boolean)
+          ? [t.pod_img_path, t.pod_sign_img_path].filter(
+              (url): url is string => Boolean(url)
+            )
           : [],
     })),
   };
 };
 
-export const parseTrackingData = (result: any, stt: string) => {
+export const parseTrackingData = (
+  result: CourierApiResponse | null,
+  stt: string
+) => {
   if (!result) return null;
   if (result.stts) return parseLionData(result, stt);
   if (result.sicepat) return parseSicepatData(result, stt);

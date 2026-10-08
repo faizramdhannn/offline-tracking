@@ -1,6 +1,6 @@
 export const EASE = [0.22, 1, 0.36, 1] as const;
 
-export const CARD = "rounded-2xl border border-line bg-surface shadow-card";
+export const CARD = "spotlight rounded-2xl border border-line bg-surface shadow-card";
 
 export const stagger = {
   hidden: {},

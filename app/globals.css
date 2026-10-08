@@ -20,6 +20,8 @@
   --danger: #b93227;
   --danger-soft: #fbeceb;
   --glow: rgb(171 200 46 / 0.16);
+  --spot: rgb(171 200 46 / 0.1);
+  --grain: 0.05;
   --shadow: 0 1px 2px rgb(6 51 77 / 0.04), 0 10px 28px -14px rgb(6 51 77 / 0.14);
 }
 
@@ -41,6 +43,8 @@
   --danger: #ff8a7e;
   --danger-soft: rgb(255 138 126 / 0.1);
   --glow: rgb(183 212 51 / 0.07);
+  --spot: rgb(183 212 51 / 0.07);
+  --grain: 0.06;
   --shadow: inset 0 1px 0 rgb(255 255 255 / 0.03),
     0 14px 34px -18px rgb(0 0 0 / 0.7);
 }
@@ -128,7 +132,44 @@
   animation: var(--animate-shimmer);
 }
 
+/* Sorotan lime tipis yang mengikuti kursor; --mx/--my diisi dari page.tsx */
+@utility spotlight {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s;
+    background: radial-gradient(
+      280px circle at var(--mx, 50%) var(--my, 50%),
+      var(--spot),
+      transparent 70%
+    );
+  }
+
+  @media (hover: hover) {
+    &:hover::after {
+      opacity: 1;
+    }
+  }
+}
+
 @layer base {
+  /* Tekstur grain samar supaya latar tidak terasa datar */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: var(--grain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
   body {
     background-color: var(--bg);
     background-image: radial-gradient(

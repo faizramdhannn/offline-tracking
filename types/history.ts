@@ -1,5 +1,10 @@
 export interface HistoryItem {
-  dateTime: string;   // atau Date kalau API kamu return Date object
+  dateTime: string;
   status: string;
-  [key: string]: any;
+  statusCode: string;
+  description: string;
+  location: string;
+  courierName?: string;
+  receivedBy?: string | null;
+  attachment?: string[] | null;
 }

@@ -1,3 +1,5 @@
+import type { HistoryItem } from "@/types/history";
+
 export type StepKey = "created" | "transit" | "delivery" | "completed";
 
 export interface ProgressStep {
@@ -7,7 +9,7 @@ export interface ProgressStep {
 }
 
 export const getProgressSteps = (
-  history: any[],
+  history: HistoryItem[],
   courier: string
 ): ProgressStep[] => {
   const steps: ProgressStep[] = [
