@@ -1,40 +1,83 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  AnimatePresence,
+  LazyMotion,
+  MotionConfig,
+  domAnimation,
+} from "motion/react";
+import * as m from "motion/react-m";
 
-import ProgressSteps from "./components/ProgressSteps";
-import AddressBlock from "./components/AddressBlock";
-import HistorySection from "./components/HistorySection";
+import SearchBar from "./components/SearchBar";
+import ThemeToggle from "./components/ThemeToggle";
 import EmptyState from "./components/EmptyState";
-import ErrorBox from "./components/ErrorBox";
-import { formatTime } from "../utils/tracking/format";
-import { useTrackHandler } from "./hooks/useTrackHandler";
-import { useTogglePOD } from "./hooks/useTogglePOD";
-import { useTrackingData } from "./hooks/useTrackingData";
+import ErrorState from "./components/ErrorState";
+import ResultSkeleton from "./components/ResultSkeleton";
+import TrackingResult from "./components/TrackingResult";
+import { normalizeResi, useTracking } from "./hooks/useTracking";
 
-interface HomeProps {
-  onNewTracking?: (sttNumber: string) => void;
+// Harus sama dengan pola rewrite di next.config.ts
+const SHAREABLE_RESI = /^[A-Z0-9-]{5,40}$/;
+
+const readResiFromUrl = () => {
+  const segment = window.location.pathname.split("/").filter(Boolean)[0] ?? "";
+
+  try {
+    return normalizeResi(decodeURIComponent(segment));
+  } catch {
+    return "";
+  }
+};
+
+function Stage({ children }: { children: React.ReactNode }) {
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.22 }}
+    >
+      {children}
+    </m.div>
+  );
 }
 
-export default function Home({ onNewTracking }: HomeProps = {}) {
-  const [stt, setStt] = useState("");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showHint, setShowHint] = useState(false);
-  const { expandedPOD, togglePOD } = useTogglePOD();
-  const { loading, result, handleTrack } = useTrackHandler();
-  const { trackingData, groupedHistory, sortedDates, progressSteps } =
-    useTrackingData(result, stt);
+export default function Home() {
+  const [input, setInput] = useState("");
+  const { state, track, reset } = useTracking();
 
-  // ── Auto-track dari localStorage (dipanggil via dynamic route) ─────────
+  // ── Resi dari URL (/NOMOR_RESI), termasuk tombol back/forward ──────────
   useEffect(() => {
-    const auto = localStorage.getItem("AUTO_STT");
-    if (auto) {
-      setStt(auto);
-      handleTrack(auto);
-      localStorage.removeItem("AUTO_STT");
-    }
-  }, [handleTrack]);
+    const syncFromUrl = () => {
+      const resi = readResiFromUrl();
+      setInput(resi);
+
+      if (resi) track(resi);
+      else reset();
+    };
+
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, [track, reset]);
+
+  const submit = useCallback(
+    (raw: string) => {
+      const resi = normalizeResi(raw);
+      if (!resi) return;
+
+      setInput(resi);
+
+      const path = `/${resi}`;
+      if (SHAREABLE_RESI.test(resi) && window.location.pathname !== path) {
+        window.history.pushState(null, "", path);
+      }
+
+      track(resi);
+    },
+    [track]
+  );
 
   // ── Listener postMessage dari parent app (iframe) ──────────────────────
   useEffect(() => {
@@ -43,193 +86,67 @@ export default function Home({ onNewTracking }: HomeProps = {}) {
       // tapi validasi type message-nya
       if (event.data?.type !== "CHECK_RESI") return;
 
-      const incomingResi = String(event.data.resi || "").trim();
-      if (!incomingResi) return;
-
-      // Isi input & langsung lacak
-      setStt(incomingResi);
-      handleTrack(incomingResi);
-
-      // Tutup drawer mobile jika terbuka
-      setIsDrawerOpen(false);
+      submit(String(event.data.resi || ""));
     };
 
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [handleTrack]);
-
-  const handleTrackWithRedirect = useCallback(async (sttNumber: string) => {
-    if (!sttNumber.trim()) return;
-    setIsDrawerOpen(false);
-
-    if (onNewTracking) {
-      onNewTracking(sttNumber.trim());
-    } else {
-      await handleTrack(sttNumber);
-    }
-  }, [onNewTracking, handleTrack]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!isDrawerOpen && stt.trim() === "") {
-        setShowHint(true);
-      } else {
-        setShowHint(false);
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [isDrawerOpen, stt]);
+  }, [submit]);
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
-      {showHint && !isDrawerOpen && (
-        <div onClick={() => setIsDrawerOpen(!isDrawerOpen)} className="cursor-pointer md:hidden fixed left-2 top-[47%] max-w-[120px] -translate-y-1/2 bg-white text-[#06334d] shadow-lg px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 animate-fadePop z-50">
-          Masukkan nomor resi di sini
-        </div>
-      )}
+    <LazyMotion features={domAnimation} strict>
+      <MotionConfig reducedMotion="user">
+        <main className="mx-auto w-full max-w-2xl px-4 pb-14 pt-5 sm:pt-8">
+          <header className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-muted">Torch Indonesia</p>
+              <h1 className="text-lg sm:text-xl">Lacak Pengiriman</h1>
+            </div>
+            <ThemeToggle />
+          </header>
 
-      <div className="max-w-[1200px] mx-auto flex gap-6 relative px-5">
-        {isDrawerOpen && (
-          <div
-            className="md:hidden fixed inset-0 bg-black/40 z-40"
-            onClick={() => setIsDrawerOpen(false)}
-          />
-        )}
-
-        <div
-          className={`
-            fixed md:relative 
-            inset-y-0 left-0
-            w-[85%] max-w-xs md:w-full 
-            bg-white md:bg-transparent
-            z-40 md:z-auto
-            transform transition-transform duration-300 ease-in-out
-            ${
-              isDrawerOpen
-                ? "translate-x-0"
-                : "-translate-x-[95%] md:translate-x-0"
-            }
-          `}
-        >
-          <button
-            className="md:hidden absolute top-1/2 -right-3 bg-white border border-gray-400 rounded-full p-1 transition-all"
-            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          >
-            <ChevronRight
-              className={`w-7 h-7 transition-transform duration-300 ${
-                isDrawerOpen ? "rotate-180" : ""
-              }`}
+          <div className="sticky top-3 z-20">
+            <SearchBar
+              value={input}
+              loading={state.status === "loading"}
+              onChange={setInput}
+              onSubmit={submit}
             />
-          </button>
-
-          <div className="md:sticky md:top-[35%] h-full md:h-auto bg-white rounded-r-2xl md:rounded-2xl shadow-2xl md:shadow-lg p-6">
-            {/* Close drawer (Mobile only) */}
-            <button
-              className="md:hidden absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
-              onClick={() => setIsDrawerOpen(false)}
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <div className="max-md:my-5 md:mb-5">
-              <h2 className="text-xl text-center font-bold text-gray-900">
-                Cek Resi Kamu
-              </h2>
-            </div>
-
-            {/* Input fields */}
-            <div className="grid gap-3">
-              <input
-                type="text"
-                value={stt}
-                onChange={(e) => setStt(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && handleTrackWithRedirect(stt)
-                }
-                placeholder="Masukkan Nomor Resi"
-                className="
-                  border-2 border-gray-300 
-                  h-11 
-                  px-3 
-                  rounded-lg 
-                  text-sm md:text-base 
-                  focus:border-[#abc82e] 
-                  focus:outline-none
-                  transition-colors
-                "
-              />
-
-              <button
-                onClick={() => handleTrackWithRedirect(stt)}
-                disabled={loading}
-                className="
-                  bg-[#06334d] 
-                  text-white 
-                  h-11 
-                  rounded-lg 
-                  px-4 
-                  font-semibold 
-                  disabled:bg-gray-400 
-                  hover:bg-[#052a3f] 
-                  text-sm md:text-base
-                  transition-colors
-                "
-              >
-                {loading ? "Mencari..." : "Lacak"}
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* ======================================
-         * RESULT SECTION
-         * ====================================== */}
-        <div className="w-full md:w-[80%]">
-          {trackingData && (
-            <div className="flex flex-col gap-6 justify-center bg-white min-h-screen shadow-lg p-4 md:p-6">
-              <div className="flex justify-center">
-                <img
-                  src={
-                    trackingData.courier === "Lion Parcel"
-                      ? "/Logo Lion.png"
-                      : "/Logo Sicepat.png"
-                  }
-                  alt="Courier Logo"
-                  className="h-14 md:h-20 object-contain"
-                />
-              </div>
+          <div className="mt-4">
+            <AnimatePresence mode="wait" initial={false}>
+              {state.status === "idle" && (
+                <Stage key="idle">
+                  <EmptyState />
+                </Stage>
+              )}
 
-              <ProgressSteps steps={progressSteps} />
-              <div className="grid gap-5">
-                <AddressBlock trackingData={trackingData} />
+              {state.status === "loading" && (
+                <Stage key="loading">
+                  <ResultSkeleton />
+                </Stage>
+              )}
 
-                <HistorySection
-                  groupedHistory={groupedHistory}
-                  sortedDates={sortedDates}
-                  expandedPOD={expandedPOD}
-                  togglePOD={togglePOD}
-                  formatTime={formatTime}
-                />
-              </div>
-            </div>
-          )}
+              {state.status === "success" && (
+                <Stage key={`result-${state.resi}`}>
+                  <TrackingResult data={state.data} />
+                </Stage>
+              )}
 
-          {loading && (
-            <div className="w-full h-screen flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-4 border-gray-300 border-t-[#06334d] rounded-full animate-spin"></div>
-                <p className="text-gray-600 text-sm md:text-base">
-                  Sedang mencari data...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!trackingData && !result?.error && <EmptyState />}
-          {result?.error && <ErrorBox result={result} />}
-        </div>
-      </div>
-    </main>
+              {state.status === "error" && (
+                <Stage key={`error-${state.resi}-${state.error}`}>
+                  <ErrorState
+                    resi={state.resi}
+                    kind={state.error}
+                    onRetry={() => track(state.resi)}
+                  />
+                </Stage>
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
+      </MotionConfig>
+    </LazyMotion>
   );
 }

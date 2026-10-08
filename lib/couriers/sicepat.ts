@@ -1,8 +1,6 @@
 // handlers/couriers/sicepat.ts
 
-import axios from "axios";
-import { CourierConfig } from "@/config/couriers";
-import { axiosConfig } from "@/config/axios/axios";
+import { CourierConfig, UPSTREAM_TIMEOUT_MS } from "@/config/couriers";
 import { jsonError, jsonOK } from "@/config/response/response";
 
 export async function fetchSicepat(sttNumber: string) {
@@ -12,16 +10,19 @@ export async function fetchSicepat(sttNumber: string) {
     return jsonError("Sicepat API key is not configured.", 500);
   }
 
-  const { data, status } = await axios.get(
+  const res = await fetch(
     `${SICEPAT_API}?waybill=${encodeURIComponent(sttNumber)}`,
     {
-      ...axiosConfig,
       headers: {
         "api-key": SICEPAT_KEY,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      cache: "no-store",
     }
   );
+
+  const data = await res.json().catch(() => null);
 
   const code = data?.sicepat?.status?.code;
   const desc = data?.sicepat?.status?.description;
@@ -40,8 +41,8 @@ export async function fetchSicepat(sttNumber: string) {
     return jsonError(msg, 400, desc);
   }
 
-  if (status !== 200) {
-    return jsonError(`Sicepat API HTTP error: ${status}`, status);
+  if (res.status !== 200) {
+    return jsonError(`Sicepat API HTTP error: ${res.status}`, res.status);
   }
 
   return jsonOK({ ...data, courier: "sicepat" });

@@ -76,19 +76,27 @@ export const metadata: Metadata = {
   },
 };
 
+// Dijalankan sebelum paint supaya tidak ada kedipan tema saat halaman dimuat.
+const themeScript = `(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="dark"&&t!=="light"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t})()`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${openSauceSans.variable} ${openSauceOne.variable}`}>
+    <html
+      lang="id"
+      className={`${openSauceSans.variable} ${openSauceOne.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="icon" type="image/x-icon" href="/torch-icon.ico" />
         <link rel="icon" type="image/svg+xml" href="/avatar.svg" />
         <link rel="apple-touch-icon" href="/avatar.svg" />
       </head>
-      <body className="font-sans antialiased">
+      <body className="min-h-dvh font-sans antialiased">
         {children}
       </body>
     </html>

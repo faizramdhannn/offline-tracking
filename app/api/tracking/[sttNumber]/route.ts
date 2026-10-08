@@ -11,10 +11,18 @@ export async function GET(
   context: { params: Promise<{ sttNumber: string }> }
 ) {
   try {
-    const { sttNumber } = await context.params;
+    const { sttNumber: raw } = await context.params;
+    const sttNumber = (raw ?? "").trim().toUpperCase();
 
     if (!sttNumber) {
       return jsonError("Tracking number is required", 400);
+    }
+
+    const courier = detectCourier(sttNumber);
+
+    // Tolak lebih awal supaya resi ngawur tidak sampai memanggil API kurir
+    if (courier === "unknown" || !/^[A-Z0-9-]{5,40}$/.test(sttNumber)) {
+      return jsonError("Unknown courier or invalid tracking number.", 400);
     }
 
     const { LION_API, SICEPAT_API } = CourierConfig;
@@ -23,26 +31,16 @@ export async function GET(
       return jsonError("Server configuration incomplete.", 500);
     }
 
-    const courier = detectCourier(sttNumber);
-
-    if (courier === "unknown") {
-      return jsonError("Unknown courier or invalid tracking number.", 400);
-    }
-
-    if (courier === "lion") return fetchLion(sttNumber);
-    if (courier === "sicepat") return fetchSicepat(sttNumber);
+    if (courier === "lion") return await fetchLion(sttNumber);
+    if (courier === "sicepat") return await fetchSicepat(sttNumber);
 
     return jsonError("Courier handler not implemented.", 500);
   } catch (error: any) {
-    if (error.response) {
-      return jsonError(
-        `API error: ${error.response.status}`,
-        error.response.status,
-        error.response.data
-      );
+    if (error?.name === "TimeoutError") {
+      return jsonError("Courier API timed out.", 504);
     }
 
-    if (error.request) {
+    if (error instanceof TypeError) {
       return jsonError("Unable to reach the API server.", 503);
     }
 

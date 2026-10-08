@@ -17,3 +17,6 @@ export const formatTime = (dateString: string) => {
 
   return `${time} WIB`;
 };
+
+export const toTitleCase = (text?: string | null) =>
+  (text ?? "").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
