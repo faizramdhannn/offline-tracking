@@ -28,7 +28,8 @@ export const parseLionData = (
       status: h.current_status,
       statusCode: h.status_code,
       description: cleanRemarks(h.remarks),
-      location: `${h.location} - ${h.city}`,
+      // h.location hanya kode hub 3 huruf (mis. "PWL"), jadi pakai nama kotanya
+      location: h.city || h.location,
       courierName: h.courier_name,
       receivedBy: h.received_by,
       attachment: h.attachment,

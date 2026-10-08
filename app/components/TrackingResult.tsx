@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as m from "motion/react-m";
 import { Check, CircleUserRound, Copy, MapPin, Share2 } from "lucide-react";
 import type { TrackingData } from "@/types/tracking";
@@ -10,9 +10,11 @@ import {
   formatTime,
   toTitleCase,
 } from "@/utils/tracking/format";
+import { buildRoute } from "@/utils/tracking/route";
 import { useTrackingData } from "../hooks/useTrackingData";
 import CourierLogo from "./CourierLogo";
 import ProgressSteps from "./ProgressSteps";
+import RouteMap from "./RouteMap";
 import Timeline from "./Timeline";
 import { CARD, EASE, rise, stagger } from "./motion";
 
@@ -58,34 +60,72 @@ function IconAction({
   );
 }
 
-// Clipboard bisa ditolak di dalam iframe tanpa izin clipboard-write
+// Link yang dibagikan selalu ke domain tracking aslinya, bukan situs induk
+const SHARE_BASE_URL =
+  process.env.NEXT_PUBLIC_SHARE_BASE_URL ?? "https://offline-tracking.vercel.app";
+
 const copyText = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    return false;
-  }
-};
+    // Clipboard API ditolak di dalam iframe tanpa izin clipboard-write;
+    // execCommand tetap jalan di sana.
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(field);
+    field.select();
 
-const shareResi = async (resi: string) => {
-  const url = `${window.location.origin}/${encodeURIComponent(resi)}`;
-
-  if (navigator.share) {
     try {
-      await navigator.share({ title: `Lacak resi ${resi}`, url });
+      return document.execCommand("copy");
     } catch {
-      // Dibatalkan user
+      return false;
+    } finally {
+      field.remove();
     }
-    return false;
   }
-
-  return copyText(url);
 };
+
+const shareLink = (resi: string) =>
+  `${SHARE_BASE_URL}/${encodeURIComponent(resi)}`;
+
+const CONFETTI_COLORS = ["#abc82e", "#d4e86a", "#06334d", "#ffffff"];
 
 function DeliveredCheck() {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // Confetti menyembur dari ikon centang, tepat setelah centangnya tergambar.
+  // Library dimuat hanya saat paket memang sudah sampai.
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const { default: confetti } = await import("canvas-confetti");
+
+      confetti({
+        particleCount: 90,
+        spread: 75,
+        startVelocity: 38,
+        ticks: 160,
+        scalar: 0.9,
+        colors: CONFETTI_COLORS,
+        disableForReducedMotion: true,
+        origin: {
+          x: (rect.left + rect.width / 2) / window.innerWidth,
+          y: (rect.top + rect.height / 2) / window.innerHeight,
+        },
+      });
+    }, 1100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <m.span
+      ref={ref}
       aria-hidden
       className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-full bg-accent text-accent-fg"
       initial={{ scale: 0 }}
@@ -119,6 +159,7 @@ export default function TrackingResult({ data }: { data: TrackingData }) {
 
   const delivered = currentStep === progressSteps.length - 1;
   const headline = HEADLINES[currentStep] ?? "Paketmu sedang diproses";
+  const route = useMemo(() => buildRoute(data, delivered), [data, delivered]);
 
   const meta = [
     latest?.dateTime && {
@@ -164,18 +205,20 @@ export default function TrackingResult({ data }: { data: TrackingData }) {
             </h2>
 
             {latest ? (
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-muted">
-                {!delivered ? (
-                  <span className="relative grid size-2 place-items-center text-accent">
-                    <span className="absolute inset-0 animate-ring rounded-full bg-current" />
-                    <span className="relative size-2 rounded-full bg-current" />
-                  </span>
-                ) : null}
-                <span>{toTitleCase(latest.description)}</span>
-                <span className="text-subtle">
-                  · {formatRelative(latest.dateTime, now)}
-                </span>
-              </p>
+              <>
+                <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted">
+                  {toTitleCase(latest.description)}
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-xs text-subtle">
+                  {!delivered ? (
+                    <span className="relative grid size-2 place-items-center text-accent">
+                      <span className="absolute inset-0 animate-ring rounded-full bg-current" />
+                      <span className="relative size-2 rounded-full bg-current" />
+                    </span>
+                  ) : null}
+                  {formatRelative(latest.dateTime, now)}
+                </p>
+              </>
             ) : null}
           </div>
         </div>
@@ -195,9 +238,9 @@ export default function TrackingResult({ data }: { data: TrackingData }) {
               action={() => copyText(data.waybillNumber)}
             />
             <IconAction
-              label="Bagikan link pelacakan"
+              label="Salin link pelacakan"
               icon={Share2}
-              action={() => shareResi(data.waybillNumber)}
+              action={() => copyText(shareLink(data.waybillNumber))}
             />
           </div>
         </div>
@@ -219,7 +262,14 @@ export default function TrackingResult({ data }: { data: TrackingData }) {
       </m.section>
 
       <m.section variants={rise} className={`${CARD} p-5 sm:p-6`}>
-        <h2 className="text-base">Rute pengiriman</h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-base">Rute pengiriman</h2>
+          {route ? (
+            <span className="text-xs text-subtle">Perkiraan antar kota</span>
+          ) : null}
+        </div>
+
+        {route ? <RouteMap route={route} /> : null}
 
         <ol className="mt-4">
           <li className="relative flex gap-3 pb-5">

@@ -22,9 +22,24 @@ export const getProgressSteps = (
   if (courier === "Lion Parcel") {
     const flags = {
       completed: history.some((h) => h.statusCode === "POD"),
-      delivery: history.some((h) => ["DEL", "HND"].includes(h.statusCode)),
+      delivery: history.some((h) =>
+        ["DEL", "HND", "DEX"].includes(h.statusCode)
+      ),
       transit: history.some((h) =>
-        ["STI", "TRANSIT", "INHUB", "OUTHUB"].includes(h.statusCode)
+        [
+          "STI",
+          "STI-SC",
+          "STI-DEST",
+          "TRANSIT",
+          "INHUB",
+          "OUTHUB",
+          "IN-HUB",
+          "OUT-HUB",
+          "CARGO TRUCK",
+          "PICKUP_TRUCKING",
+          "DROPOFF_TRUCKING",
+          "KONDISPATCH",
+        ].includes(h.statusCode)
       ),
       created: history.length > 0,
     };

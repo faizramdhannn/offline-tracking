@@ -30,17 +30,27 @@ function EventIcon({
       return <PackageCheck {...props} />;
     case "DEL":
     case "HND":
+    case "DEX":
     case "ANT":
       return <Bike {...props} />;
     case "TRANSIT":
     case "INHUB":
     case "OUTHUB":
+    case "IN-HUB":
+    case "OUT-HUB":
+    case "DROPOFF_TRUCKING":
+    case "KONDISPATCH":
     case "OUT":
+    case "CARGO TRUCK":
+    case "PICKUP_TRUCKING":
       return <Truck {...props} />;
     case "STI":
+    case "STI-SC":
+    case "STI-DEST":
     case "IN":
       return <Warehouse {...props} />;
     case "PICKREQ":
+    case "PUP":
       return <PackagePlus {...props} />;
     default:
       return <Package {...props} />;
